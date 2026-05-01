@@ -1,0 +1,21 @@
+"use client";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+
+const fmt = (n) => `$${Math.round(n).toLocaleString()}`;
+
+export default function AovByChannelChart({ data }) {
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={data} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+        <XAxis dataKey="month" />
+        <YAxis yAxisId="b2b" tickFormatter={fmt} stroke="#0f766e" />
+        <YAxis yAxisId="dtc" orientation="right" tickFormatter={fmt} stroke="#7c3aed" />
+        <Tooltip formatter={(v) => fmt(v)} contentStyle={{ borderRadius: 8, border: "1px solid #e2e8f0", fontSize: 12 }} />
+        <Legend wrapperStyle={{ fontSize: 12 }} />
+        <Line yAxisId="b2b" type="monotone" dataKey="B2B_aov" name="B2B AOV (left)" stroke="#0f766e" strokeWidth={2} dot={{ r: 3 }} />
+        <Line yAxisId="dtc" type="monotone" dataKey="DTC_aov" name="DTC AOV (right)" stroke="#7c3aed" strokeWidth={2} dot={{ r: 3 }} />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}

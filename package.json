@@ -1,0 +1,89 @@
+// Product family classification by SKU prefix
+// Aligned with leadership dashboard logic
+
+export const SKU_FAMILIES = {
+  GUMMIES: "Gummies",
+  XVIE_SERUM: "Xvié Serum",
+  SACHETS: "Sachets",
+  STARTER_PACK: "Xvié Starter Pack",
+  APPAREL: "Apparel & Misc",
+  OTHER: "Other",
+};
+
+// SKU → product family mapping
+export function classifySku(sku) {
+  if (!sku) return SKU_FAMILIES.OTHER;
+  const s = String(sku).toUpperCase();
+
+  // Known UPC barcodes (numeric-only SKUs)
+  // 860011740100 = standard 60ct gummies bottle (B2B-direct UPC)
+  if (s === "860011740100") return SKU_FAMILIES.GUMMIES;
+
+  // Xvié Starter Pack: explicitly the -003 2ML pack only.
+  // (X-XVIE-2ML-001 etc. are regular B2B 2ML serum vials, NOT starter packs.)
+  if (s === "X-XVIE-2ML-003") return SKU_FAMILIES.STARTER_PACK;
+
+  // Xvié serum (all other XVIE / FRC SKUs)
+  if (s.startsWith("X-XVIE-") || s.startsWith("X-FRC-")) {
+    return SKU_FAMILIES.XVIE_SERUM;
+  }
+
+  // Sachets
+  if (s.includes("SACHET") || s.startsWith("X-SCH-")) return SKU_FAMILIES.SACHETS;
+
+  // Gummies (X-GN-*, X-RB-*, etc.)
+  if (s.startsWith("X-GN-") || s.startsWith("X-RB-") || s.includes("GUMMIES")) {
+    return SKU_FAMILIES.GUMMIES;
+  }
+
+  // Apparel & marketing materials
+  if (s.startsWith("X-TEE-") || s.startsWith("X-BAG-")) return SKU_FAMILIES.APPAREL;
+
+  return SKU_FAMILIES.OTHER;
+}
+
+// SKUs that must NEVER appear in DTC-only reporting (B2B case quantities)
+export const DTC_EXCLUDED_SKUS = new Set([
+  "X-GN-060CT-001",
+  "X-FRC-30ML-001",
+  "X-FRC-30ML-CASE",
+]);
+
+// Discount codes that signal a B2B rep transaction
+export const B2B_REP_DISCOUNT_PATTERNS = [
+  /^REP-/i,
+  /^XVIE\d+/i,
+];
+
+// 3PL labels are encoded directly in order_tags as "Scale3PL", "Shipbob GA", "Shipbob TX"
+export const THREEPL_TAG_PATTERNS = [
+  { match: /scale3pl/i, label: "Scale3PL (CA)" },
+  { match: /shipbob\s*ga/i, label: "ShipBob (GA)" },
+  { match: /shipbob\s*tx/i, label: "ShipBob (TX)" },
+  { match: /shipbob/i, label: "ShipBob (Other)" },
+];
+
+// Fallback: infer 3PL from shipping state when no tag present.
+// order_shipping_address_province returns FULL state names from Shopify.
+export const SHIPBOB_GA_STATES = new Set([
+  "Alabama", "Arkansas", "Connecticut", "Delaware", "District of Columbia",
+  "Florida", "Georgia", "Iowa", "Illinois", "Indiana", "Kentucky",
+  "Louisiana", "Massachusetts", "Maryland", "Maine", "Michigan", "Minnesota",
+  "Missouri", "Mississippi", "North Carolina", "New Hampshire", "New Jersey",
+  "New York", "Ohio", "Pennsylvania", "Rhode Island", "South Carolina",
+  "Tennessee", "Virginia", "Vermont", "Wisconsin", "West Virginia",
+]);
+
+export function classify3PLFromState(stateName) {
+  if (!stateName) return "Unknown";
+  return SHIPBOB_GA_STATES.has(stateName) ? "ShipBob (GA)" : "Scale3PL (CA)";
+}
+
+export function classify3PLFromTags(tags, fallbackState) {
+  for (const tag of tags) {
+    for (const { match, label } of THREEPL_TAG_PATTERNS) {
+      if (match.test(tag)) return label;
+    }
+  }
+  return classify3PLFromState(fallbackState);
+}
